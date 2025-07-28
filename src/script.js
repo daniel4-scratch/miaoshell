@@ -204,9 +204,15 @@ term.onData(data => {
 
 async function init() {
   // Initialize terminal
-  //print ./assets/miao.txt
-  await fetch('./assets/miao.txt')
-    .then(response => response.text())
+  //print /assets/miao.txt
+  await fetch('/assets/miao.txt')
+    .then(response => {
+      if (response.status === 200) {
+        return response.text();
+      } else {
+        throw new Error('HTTP ' + response.status);
+      }
+    })
     .then(text => {
       text.split(/\r?\n/).forEach(line => term.writeln(line));
     })
