@@ -110,24 +110,21 @@ function getSizeInKB(variable) {
 }
 
 const commands = {
-  help: () => {
-    term.writeln('\r\nAvailable commands:');
-    term.writeln('  help     - Show this help message');
-    term.writeln('  clear    - Clear the terminal');
-    term.writeln('  echo     - Echo back your message');
-    term.writeln('  date     - Show current date and time');
-    term.writeln('  cd       - Change directory: cd dirname or cd .. or cd (for root)');
-    term.writeln('  ls       - List files in the current directory');
-    term.writeln('  cat      - Show file contents: cat filename');
-    term.writeln('  write    - Write to a file: write filename content');
-    term.writeln('  mkdir    - Create directory: mkdir dirname');
-    term.writeln('  rmdir    - Remove directory: rmdir dirname');
-    term.writeln('  rm       - Remove a file: rm filename');
-    term.writeln('  save     - Save VFS to browser storage');
-    term.writeln('  load     - Load VFS from browser storage');
-    term.writeln('  import   - Import VFS from JSON file: import filename.json');
-    term.writeln('  storage  - Show VFS storage usage');
-    term.writeln('  about    - About this terminal');
+  help: async () => {
+    await fetch('./assets/help.txt')
+      .then(response => {
+        if (response.status === 200) {
+          return response.text();
+        } else {
+          throw new Error('HTTP ' + response.status);
+        }
+      })
+      .then(text => {
+        text.split(/\r?\n/).forEach(line => term.writeln(line));
+      })
+      .catch(error => {
+        term.writeln('Error loading file: ' + error);
+      });
   },
   clear: () => {
     setTimeout(() => {
@@ -250,27 +247,45 @@ const commands = {
     loadVFS();
     term.writeln('\r\nVFS loaded from browser storage.');
   },
-  import: (args) => {
-    if (!args[0]) {
-      term.writeln('\r\nUsage: import filename.json');
-      return;
-    }
-    const filename = args[0];
-    fetch(filename)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+  import: async () => {
+    try {
+      // Open the file picker
+      const [fileHandle] = await window.showOpenFilePicker();
+      const file = await fileHandle.getFile();
+      if (file.size > 512 * 1024) {
+        term.writeln('\r\nFile is too large. Maximum size is 512 KB.');
+        return;
+      }
+      const fileContent = await file.text();
+      //check if valid json
+      try {
+        const importedVFS = JSON.parse(fileContent);
+        if (typeof importedVFS === 'object' && importedVFS !== null) {
+          vfs = importedVFS;
+          cwd_path = '/'; // Reset to root after import
+          term.writeln('\r\nVFS imported successfully.');
+        } else {
+          term.writeln('\r\nInvalid VFS format. Must be a JSON object.');
         }
-        return response.json();
-      })
-      .then(data => {
-        Object.assign(vfs, data);
-        saveVFS();
-        term.writeln(`\r\nImported ${Object.keys(data).length} files from ${filename}`);
-      })
-      .catch(error => {
-        term.writeln(`\r\nError importing ${filename}: ${error.message}`);
-      });
+      } catch (e) {
+        term.writeln('\r\nError parsing VFS file. Ensure it is a valid JSON object.');
+      }
+    } catch (error) {
+      term.writeln('\r\nError importing VFS:', error);
+    }
+  },
+  export: () => {
+    const vfsString = JSON.stringify(vfs, null, 2);
+    const blob = new Blob([vfsString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'vfs.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    term.writeln('\r\nVFS exported as vfs.json');
   },
   storage: () => {
     term.writeln('\r\nVirtual File System Storage:');
@@ -295,10 +310,23 @@ function executeCommand(input) {
   }
 
   if (commands[command]) {
-    commands[command](args);
+    const result = commands[command](args);
+    // If the command returns a promise, wait for it to complete
+    if (result instanceof Promise) {
+      result.then(() => {
+        prompt();
+      }).catch(error => {
+        term.writeln('\r\nCommand error: ' + error.message);
+        prompt();
+      });
+    } else {
+      // For non-async commands, show prompt immediately
+      prompt();
+    }
   } else {
     term.writeln('\r\nCommand not found: ' + command);
     term.writeln('Type "help" for available commands.');
+    prompt();
   }
 }
 
@@ -314,7 +342,7 @@ term.onData(data => {
   if (code === 13) { // Enter key
     executeCommand(currentInput);
     currentInput = '';
-    prompt();
+    // Note: prompt() is now called from executeCommand after async operations complete
   } else if (code === 127) { // Backspace
     if (currentInput.length > 0) {
       currentInput = currentInput.slice(0, -1);

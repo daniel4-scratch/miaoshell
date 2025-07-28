@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite'
-import { copyFileSync, mkdirSync } from 'fs'
+import { copyFileSync, mkdirSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
 
 export default defineConfig({
@@ -26,8 +26,24 @@ export default defineConfig({
       writeBundle() {
         // Create assets directory in dist
         mkdirSync('dist/assets', { recursive: true })
-        // Copy miao.txt to assets folder
-        copyFileSync('src/assets/miao.txt', 'dist/assets/miao.txt')
+        
+        // Automatically copy all files from src/assets to dist/assets
+        const assetsDir = 'src/assets'
+        try {
+          const files = readdirSync(assetsDir)
+          files.forEach(file => {
+            const srcPath = join(assetsDir, file)
+            const destPath = join('dist/assets', file)
+            
+            // Only copy files (not directories)
+            if (statSync(srcPath).isFile()) {
+              copyFileSync(srcPath, destPath)
+              console.log(`Copied: ${file}`)
+            }
+          })
+        } catch (error) {
+          console.warn('Could not copy assets:', error.message)
+        }
       }
     }
   ]

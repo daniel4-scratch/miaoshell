@@ -1,0 +1,33 @@
+MiaoShell v1.0.0 - Help Guide
+========================================
+
+BASIC COMMANDS:
+  about    - Show terminal information
+  clear    - Clear the screen
+  date     - Show current date/time
+  echo     - Print text (echo "hello")
+  help     - Show this help
+
+VIRTUAL FILE SYSTEM:
+  cat      - Show file contents (cat file.txt)
+  cd       - Change directory (cd dir / cd .. / cd)
+  ls       - List files and directories
+  mkdir    - Create directory (mkdir docs)
+  rm       - Delete file (rm file.txt)
+  rmdir    - Remove directory (rmdir docs)
+  write    - Create file (write file.txt content)
+
+VFS STORAGE:
+  export   - Export VFS to JSON file (download)
+  import   - Import from JSON (import from files)
+  load     - Load VFS from browser storage
+  save     - Save VFS to browser storage
+  storage  - Show storage usage stats
+
+TIPS:
+• Commands are case-insensitive
+• Directories shown with trailing "/"
+• VFS persists in localStorage (512 KB limit)
+• Use quotes for spaces: write "my file" "content"
+
+Repository: https://github.com/daniel4-scratch/xtermtest
