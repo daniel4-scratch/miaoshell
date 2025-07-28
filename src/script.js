@@ -247,32 +247,80 @@ const commands = {
     loadVFS();
     term.writeln('\r\nVFS loaded from browser storage.');
   },
-  import: async () => {
-    try {
-      // Open the file picker
-      const [fileHandle] = await window.showOpenFilePicker();
-      const file = await fileHandle.getFile();
-      if (file.size > 512 * 1024) {
-        term.writeln('\r\nFile is too large. Maximum size is 512 KB.');
-        return;
-      }
-      const fileContent = await file.text();
-      //check if valid json
+  import: () => {
+    return new Promise((resolve, reject) => {
       try {
-        const importedVFS = JSON.parse(fileContent);
-        if (typeof importedVFS === 'object' && importedVFS !== null) {
-          vfs = importedVFS;
-          cwd_path = '/'; // Reset to root after import
-          term.writeln('\r\nVFS imported successfully.');
-        } else {
-          term.writeln('\r\nInvalid VFS format. Must be a JSON object.');
-        }
-      } catch (e) {
-        term.writeln('\r\nError parsing VFS file. Ensure it is a valid JSON object.');
+        // Create a hidden file input element
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.style.display = 'none';
+        
+        // Handle file selection
+        input.onchange = async (event) => {
+          try {
+            const file = event.target.files[0];
+            if (!file) {
+              term.writeln('\r\nNo file selected.');
+              resolve();
+              return;
+            }
+            
+            if (file.size > 512 * 1024) {
+              term.writeln('\r\nFile is too large. Maximum size is 512 KB.');
+              resolve();
+              return;
+            }
+            
+            try {
+              const fileContent = await file.text();
+              // Check if valid JSON
+              try {
+                const importedVFS = JSON.parse(fileContent);
+                if (typeof importedVFS === 'object' && importedVFS !== null) {
+                  vfs = importedVFS;
+                  cwd_path = '/'; // Reset to root after import
+                  term.writeln('\r\nVFS imported successfully.');
+                } else {
+                  term.writeln('\r\nInvalid VFS format. Must be a JSON object.');
+                }
+              } catch (e) {
+                term.writeln('\r\nError parsing VFS file. Ensure it is a valid JSON object.');
+              }
+            } catch (error) {
+              term.writeln('\r\nError reading file: ' + error.message);
+            }
+            
+            resolve();
+          } catch (error) {
+            term.writeln('\r\nError importing VFS: ' + error.message);
+            resolve();
+          } finally {
+            // Clean up
+            if (document.body.contains(input)) {
+              document.body.removeChild(input);
+            }
+          }
+        };
+        
+        // Handle cancellation
+        input.oncancel = () => {
+          term.writeln('\r\nImport cancelled.');
+          if (document.body.contains(input)) {
+            document.body.removeChild(input);
+          }
+          resolve();
+        };
+        
+        // Trigger file picker
+        document.body.appendChild(input);
+        input.click();
+        
+      } catch (error) {
+        term.writeln('\r\nError importing VFS: ' + error.message);
+        reject(error);
       }
-    } catch (error) {
-      term.writeln('\r\nError importing VFS:', error);
-    }
+    });
   },
   export: () => {
     const vfsString = JSON.stringify(vfs, null, 2);
