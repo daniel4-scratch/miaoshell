@@ -24,10 +24,13 @@ VFS STORAGE:
   save     - Save VFS to browser storage
   storage  - Show storage usage stats
 
+JAVASCRIPT COMMANDS:
+    execute  - Run JavaScript file (execute script.js)
+
 TIPS:
 • Commands are case-insensitive
 • Directories shown with trailing "/"
 • VFS persists in localStorage (512 KB limit)
 • Use quotes for spaces: write "my file" "content"
 
-Repository: https://github.com/daniel4-scratch/xtermtest
+Repository: https://github.com/daniel4-scratch/mioashell
