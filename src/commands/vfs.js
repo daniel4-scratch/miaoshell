@@ -226,8 +226,8 @@ export const commands = {
               return;
             }
             
-            if (file.size > 512 * 1024) {
-              term.writeln('\r\nFile is too large. Maximum size is 512 KB.');
+            if (file.size > 5000 * 1024) {
+              term.writeln('\r\nFile is too large. Maximum size is 5000 KB.');
               resolve();
               return;
             }
@@ -299,8 +299,8 @@ export const commands = {
 
   storage: (term) => {
     term.writeln('\r\nVirtual File System Storage:');
-    term.writeln(`${getSizeInKB(vfs).toFixed(2)} KB / 512 KB`);
+    term.writeln(`${getSizeInKB(vfs).toFixed(2)} KB / 5000 KB`);
     term.writeln(`(${Object.keys(vfs).length} files)`);
-    term.writeln(`(${(getSizeInKB(vfs) / 512 * 100).toFixed(2)}% used)`);
+    term.writeln(`(${(getSizeInKB(vfs) / 5000 * 100).toFixed(2)}% used)`);
   }
 };
