@@ -102,7 +102,7 @@ const commands = {
   about: (term) => {
     term.writeln('\r\n' + colors.bold + 'MiaoShell' + colors.reset + ' - A Useless Terminal');
     term.writeln('Version: 1.0.0');
-    term.writeln('https://github.com/daniel4-scratch/xtermtest');
+    term.writeln('https://github.com/daniel4-scratch/miaoshell');
   },
   ...vfs.commands, ...jsC.commands
 };
