@@ -1,4 +1,4 @@
-//script.js
+//script.js - main logic for miao shell
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
@@ -7,6 +7,7 @@ import '@xterm/xterm/css/xterm.css';
 
 import * as vfs from './commands/vfs.js'; // Import all VFS commands
 import * as jsC from './commands/js.js'; // Import JavaScript commands
+import * as curl from './commands/curl.js'; // Import curl commands
 
 // ANSI color codes for terminal formatting
 const colors = {
@@ -66,6 +67,8 @@ let currentLine = '';
 let cursorPosition = 0;
 let commandHistory = [];
 let historyIndex = -1;
+let undoStack = [];
+let redoStack = [];
 
 // Load VFS on startup
 vfs.loadVFS();
@@ -104,7 +107,7 @@ const commands = {
     term.writeln('Version: 1.0.0');
     term.writeln('https://github.com/daniel4-scratch/miaoshell');
   },
-  ...vfs.commands, ...jsC.commands
+  ...vfs.commands, ...jsC.commands, ...curl.commands
 };
 
 function executeCommand(input) {
@@ -153,12 +156,24 @@ function prompt() {
 // Handle terminal input
 term.onKey(e => {
   const { key, domEvent } = e;
+  
+  // Save state for undo before any input-changing action
+  function saveUndoState() {
+    undoStack.push({ input: currentInput, cursor: cursorPosition });
+    // Clear redo stack on new input
+    redoStack = [];
+    // Limit undo stack size
+    if (undoStack.length > 100) undoStack.shift();
+  }
+
   if (domEvent.key === 'Enter') {
+    saveUndoState();
     executeCommand(currentInput);
     currentInput = '';
     cursorPosition = 0; // Reset cursor position
   } else if (domEvent.key === 'Backspace') {
     if (currentInput.length > 0 && cursorPosition > 0) {
+      saveUndoState();
       // Remove character at cursor position
       currentInput = currentInput.slice(0, cursorPosition - 1) + currentInput.slice(cursorPosition);
       cursorPosition--;
@@ -223,7 +238,42 @@ term.onKey(e => {
         cursorPosition = 0; // Reset cursor position
       }
     }
+  } else if (domEvent.ctrlKey && domEvent.key === 'z') {
+    // Undo (Ctrl+Z)
+    if (undoStack.length > 0) {
+      redoStack.push({ input: currentInput, cursor: cursorPosition });
+      const prev = undoStack.pop();
+      currentInput = prev.input;
+      cursorPosition = prev.cursor;
+      // Clear line and redraw
+      term.write('\x1b[2K');
+      term.write('\r');
+      term.write('\x1b[1A');
+      prompt();
+      term.write(currentInput);
+      // Move cursor to correct position
+      if (cursorPosition < currentInput.length) {
+        term.write(`\x1b[${currentInput.length - cursorPosition}D`);
+      }
+    }
+  } else if (domEvent.ctrlKey && domEvent.key === 'y') {
+    // Redo (Ctrl+Y)
+    if (redoStack.length > 0) {
+      undoStack.push({ input: currentInput, cursor: cursorPosition });
+      const next = redoStack.pop();
+      currentInput = next.input;
+      cursorPosition = next.cursor;
+      term.write('\x1b[2K');
+      term.write('\r');
+      term.write('\x1b[1A');
+      prompt();
+      term.write(currentInput);
+      if (cursorPosition < currentInput.length) {
+        term.write(`\x1b[${currentInput.length - cursorPosition}D`);
+      }
+    }
   } else if (typeof key === 'string' && key.length === 1) {
+    saveUndoState();
     // Insert character at cursor position
     currentInput = currentInput.slice(0, cursorPosition) + key + currentInput.slice(cursorPosition);
     
@@ -233,6 +283,29 @@ term.onKey(e => {
     cursorPosition++; // Update cursor position
   }
 });
+// Paste support: handle paste event and insert clipboard text at cursor position
+if (term.textarea) {
+  term.textarea.addEventListener('paste', async (event) => {
+    event.preventDefault();
+    let pasteText = '';
+    if (event.clipboardData) {
+      pasteText = event.clipboardData.getData('text');
+    } else if (window.clipboardData) {
+      pasteText = window.clipboardData.getData('Text');
+    }
+    if (pasteText) {
+      // Save undo state before paste
+      undoStack.push({ input: currentInput, cursor: cursorPosition });
+      redoStack = [];
+      if (undoStack.length > 100) undoStack.shift();
+      
+      // Insert pasted text at cursor position
+      currentInput = currentInput.slice(0, cursorPosition) + pasteText + currentInput.slice(cursorPosition);
+      term.write(pasteText);
+      cursorPosition += pasteText.length;
+    }
+  });
+}
 
 async function init() {
   // Initialize terminal

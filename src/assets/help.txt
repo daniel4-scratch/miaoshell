@@ -26,12 +26,25 @@ VFS STORAGE:
   storage  - Show storage usage stats
 
 JAVASCRIPT COMMANDS:
-    execute  - Run JavaScript file (execute script.js)
+  js execute - Run JavaScript file (js execute script.js)
+  js open    - Open HTML file in new window (js open page.html)
+
+CURL COMMANDS:
+  curl     - Make HTTP requests (see curl help for options)
+
+INPUT CONTROLS:
+  Ctrl+Z   - Undo last input change
+  Ctrl+Y   - Redo last undone change
+  Up/Down  - Navigate command history
+  Left/Right - Move cursor in current line
+  Ctrl+V   - Paste clipboard content
 
 TIPS:
 • Commands are case-insensitive
 • Directories shown with trailing "/"
 • VFS persists in localStorage (512 KB limit)
 • Use quotes for spaces: write "my file" "content"
+• Undo/redo works for typing, backspace, and paste operations
+• Command history persists during session
 
 Repository: https://github.com/daniel4-scratch/miaoshell
